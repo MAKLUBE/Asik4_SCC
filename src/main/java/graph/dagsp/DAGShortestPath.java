@@ -2,20 +2,21 @@ package graph.dagsp;
 
 import java.util.*;
 
-public class DAGShortPath {
+public class DAGShortestPath {
 
     private final Map<String, List<Edge>> graph;
 
     public static class Edge {
         public final String to;
         public final int weight;
+
         public Edge(String to, int weight) {
             this.to = to;
             this.weight = weight;
         }
     }
 
-    public DAGShortPath(Map<String, List<Edge>> graph) {
+    public DAGShortestPath(Map<String, List<Edge>> graph) {
         this.graph = graph;
     }
 
