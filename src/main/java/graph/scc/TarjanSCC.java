@@ -19,11 +19,14 @@ public class TarjanSCC {
     }
 
     public List<List<String>> findSCCs() {
-        metrics.start();
+        metrics.start(); // запускаем таймер
+
         for (String v : graph.keySet()) {
             if (!disc.containsKey(v)) dfs(v);
         }
+
         metrics.stop();
+
         System.out.println("[Tarjan Metrics] " + metrics);
         metrics.saveToCSV("metrics.csv");
         return components;

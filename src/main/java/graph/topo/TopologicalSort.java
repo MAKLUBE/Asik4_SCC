@@ -38,12 +38,10 @@ public class TopologicalSort {
         }
 
         metrics.stop();
-        System.out.println("[Kahn Metrics] " + metrics);
-        metrics.saveToCSV("metrics.csv");
-
         if (order.size() != graph.size()) {
             throw new IllegalStateException("Graph contains a cycle — not a DAG!");
         }
+
         return order;
     }
 

@@ -11,10 +11,12 @@ public class DAGShortestPath {
     public static class Edge {
         public final String to;
         public final int weight;
+
         public Edge(String to, int weight) {
             this.to = to;
             this.weight = weight;
         }
+
         @Override
         public String toString() {
             return to + "(" + weight + ")";
@@ -44,8 +46,6 @@ public class DAGShortestPath {
         }
 
         metrics.stop();
-        metrics.saveToCSV("metrics.csv");
-        System.out.println("[DAG-SP Shortest Metrics] " + metrics);
         lastMetrics = metrics;
         return dist;
     }
@@ -69,8 +69,6 @@ public class DAGShortestPath {
         }
 
         metrics.stop();
-        metrics.saveToCSV("metrics.csv");
-        System.out.println("[DAG-SP Longest Metrics] " + metrics);
         lastMetrics = metrics;
         return dist;
     }

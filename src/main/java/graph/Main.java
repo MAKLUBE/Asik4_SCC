@@ -1,5 +1,6 @@
 package graph;
 
+import com.google.gson.JsonObject;
 import graph.scc.TarjanSCC;
 import graph.topo.TopologicalSort;
 import graph.dagsp.DAGShortestPath;
@@ -13,56 +14,65 @@ import java.util.*;
 public class Main {
     public static void main(String[] args) {
 
+        String path = "src/main/resources/graphs.json";
+        List<JsonObject> allGraphs = GraphLoader.loadAllGraphs(path);
+
         try (FileWriter w = new FileWriter("metrics.csv")) {
-            w.write("Dataset,Algorithm,Time(ms),DFS,Edges,QueueOps,Relaxations\n");
+            w.write("");
         } catch (Exception e) {
-            System.err.println("Failed to initialize metrics.csv: " + e.getMessage());
+            System.err.println("Error initializing metrics.csv: " + e.getMessage());
         }
 
-        String[] datasets = {
-                "small_1.json", "small_2.json", "small_3.json",
-                "medium_1.json", "medium_2.json", "medium_3.json",
-                "large_1.json"
-        };
+        for (JsonObject dataset : allGraphs) {
+            String name = dataset.get("name").getAsString();
+            String source = GraphLoader.getSource(dataset);
+            var weightedGraph = GraphLoader.parseWeighted(dataset);
+            var unweightedGraph = GraphLoader.parseUnweighted(dataset);
 
-        for (String file : datasets) {
-            String path = "src/main/resources/" + file;
-
-            var weightedGraph = GraphLoader.loadWeightedGraph(path);
-            var unweightedGraph = GraphLoader.loadUnweightedGraph(path);
-            String source = GraphLoader.getSource(path);
+            try (FileWriter w = new FileWriter("metrics.csv", true)) {
+                w.write(String.format("=== %s ===\n", name));
+                w.write("Algorithm,Time(ms),DFS,Edges,QueueOps,Relaxations\n");
+            } catch (Exception e) {
+                System.err.println("Error writing header for dataset " + name + ": " + e.getMessage());
+            }
 
             TarjanSCC scc = new TarjanSCC(unweightedGraph);
-            scc.findSCCs();
-            writeMetricsCSV(file, "TarjanSCC", scc.getMetrics());
-
             var components = scc.findSCCs();
+            writeMetrics(name, "TarjanSCC", scc.getMetrics());
+
             var condensation = TarjanSCC.toCondensationGraph(components, unweightedGraph);
             TopologicalSort.kahnSort(condensation);
-            writeMetricsCSV(file, "KahnTopo", TopologicalSort.getMetrics());
+            writeMetrics(name, "KahnTopo", TopologicalSort.getMetrics());
 
             DAGShortestPath dag = new DAGShortestPath(weightedGraph);
             var simple = toSimple(weightedGraph);
             var topoForSP = TopologicalSort.dfsSort(simple);
 
             dag.shortestPath(source, topoForSP);
-            writeMetricsCSV(file, "DAGSP_Shortest", DAGShortestPath.getLastMetrics());
+            writeMetrics(name, "DAGSP_Shortest", DAGShortestPath.getLastMetrics());
 
             dag.longestPath(source, topoForSP);
-            writeMetricsCSV(file, "DAGSP_Longest", DAGShortestPath.getLastMetrics());
+            writeMetrics(name, "DAGSP_Longest", DAGShortestPath.getLastMetrics());
+
+            try (FileWriter w = new FileWriter("metrics.csv", true)) {
+                w.write("\n");
+            } catch (Exception ignored) {}
         }
 
-        System.out.println("✅ All datasets processed. Results written to metrics.csv");
+        System.out.println("✅ All graphs processed. Metrics written to metrics.csv");
     }
 
-    private static void writeMetricsCSV(String dataset, String algo, Metrics m) {
+    private static void writeMetrics(String dataset, String algo, Metrics m) {
         try (FileWriter w = new FileWriter("metrics.csv", true)) {
-            w.write(String.format("%s,%s,%.3f,%d,%d,%d,%d\n",
-                    dataset, algo, m.getTimeMs(),
-                    m.getDFSVisits(), m.getEdgeChecks(),
-                    m.getQueueOps(), m.getRelaxations()));
+            w.write(String.format("%s,%.3f,%d,%d,%d,%d\n",
+                    algo,
+                    m.getTimeMs(),
+                    m.getDFSVisits(),
+                    m.getEdgeChecks(),
+                    m.getQueueOps(),
+                    m.getRelaxations()));
         } catch (Exception e) {
-            System.err.println("Error writing metrics: " + e.getMessage());
+            System.err.println("Error writing metrics for " + dataset + ": " + e.getMessage());
         }
     }
 

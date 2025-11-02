@@ -1,64 +1,62 @@
 package util;
 
 import com.google.gson.*;
+import graph.dagsp.DAGShortestPath;
+
 import java.io.FileReader;
 import java.util.*;
-import graph.dagsp.DAGShortestPath.Edge;
 
 public class GraphLoader {
 
-    public static Map<String, List<Edge>> loadWeightedGraph(String path) {
-        Map<String, List<Edge>> graph = new HashMap<>();
+    public static List<JsonObject> loadAllGraphs(String path) {
         try (FileReader reader = new FileReader(path)) {
-            JsonObject obj = JsonParser.parseReader(reader).getAsJsonObject();
-            JsonArray edges = obj.getAsJsonArray("edges");
-            for (JsonElement e : edges) {
-                JsonObject edge = e.getAsJsonObject();
-
-                String from = edge.has("from") ? edge.get("from").getAsString()
-                        : String.valueOf(edge.get("u").getAsInt());
-                String to = edge.has("to") ? edge.get("to").getAsString()
-                        : String.valueOf(edge.get("v").getAsInt());
-                int w = edge.has("weight") ? edge.get("weight").getAsInt()
-                        : edge.get("w").getAsInt();
-
-                graph.computeIfAbsent(from, k -> new ArrayList<>()).add(new Edge(to, w));
-                graph.putIfAbsent(to, new ArrayList<>());
-            }
-
+            JsonArray arr = JsonParser.parseReader(reader).getAsJsonArray();
+            List<JsonObject> graphs = new ArrayList<>();
+            for (JsonElement e : arr) graphs.add(e.getAsJsonObject());
+            return graphs;
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to load all graphs: " + e.getMessage());
         }
-        return graph;
     }
 
-    public static Map<String, List<String>> loadUnweightedGraph(String path) {
+    public static Map<String, List<String>> parseUnweighted(JsonObject json) {
         Map<String, List<String>> graph = new HashMap<>();
-        try (FileReader reader = new FileReader(path)) {
-            JsonObject obj = JsonParser.parseReader(reader).getAsJsonObject();
-            JsonArray edges = obj.getAsJsonArray("edges");
-            for (JsonElement e : edges) {
-                JsonObject edge = e.getAsJsonObject();
-                String from = edge.has("from") ? edge.get("from").getAsString()
-                        : String.valueOf(edge.get("u").getAsInt());
-                String to = edge.has("to") ? edge.get("to").getAsString()
-                        : String.valueOf(edge.get("v").getAsInt());
-                graph.computeIfAbsent(from, k -> new ArrayList<>()).add(to);
-                graph.putIfAbsent(to, new ArrayList<>());
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        JsonArray edges = json.getAsJsonArray("edges");
+
+        for (JsonElement e : edges) {
+            JsonObject edge = e.getAsJsonObject();
+            String u = String.valueOf(edge.get("u").getAsInt());
+            String v = String.valueOf(edge.get("v").getAsInt());
+
+            graph.computeIfAbsent(u, k -> new ArrayList<>()).add(v);
+            graph.computeIfAbsent(v, k -> new ArrayList<>()); // ensure all nodes exist
         }
+
+        int n = json.get("n").getAsInt();
+        for (int i = 0; i < n; i++) graph.putIfAbsent(String.valueOf(i), new ArrayList<>());
         return graph;
     }
 
-    public static String getSource(String path) {
-        try (FileReader reader = new FileReader(path)) {
-            JsonObject obj = JsonParser.parseReader(reader).getAsJsonObject();
-            return String.valueOf(obj.get("source").getAsInt());
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "0";
+    public static Map<String, List<DAGShortestPath.Edge>> parseWeighted(JsonObject json) {
+        Map<String, List<DAGShortestPath.Edge>> graph = new HashMap<>();
+        JsonArray edges = json.getAsJsonArray("edges");
+
+        for (JsonElement e : edges) {
+            JsonObject edge = e.getAsJsonObject();
+            String u = String.valueOf(edge.get("u").getAsInt());
+            String v = String.valueOf(edge.get("v").getAsInt());
+            int w = edge.get("w").getAsInt();
+
+            graph.computeIfAbsent(u, k -> new ArrayList<>()).add(new DAGShortestPath.Edge(v, w));
+            graph.computeIfAbsent(v, k -> new ArrayList<>()); // ensure vertex exists
         }
+
+        int n = json.get("n").getAsInt();
+        for (int i = 0; i < n; i++) graph.putIfAbsent(String.valueOf(i), new ArrayList<>());
+        return graph;
+    }
+
+    public static String getSource(JsonObject json) {
+        return String.valueOf(json.get("source").getAsInt());
     }
 }
