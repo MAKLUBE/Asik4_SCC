@@ -40,7 +40,7 @@ class DAGShortestPathTest {
         DAGShortestPath dagsp = new DAGShortestPath(graph);
         List<String> topo = List.of("S", "A", "B", "C");
 
-        var longest = dagsp.longPath("S", topo);
+        var longest = dagsp.longestPath("S", topo);
         assertEquals(6, longest.get("C")); // S→A→C gives 2+4
     }
 }

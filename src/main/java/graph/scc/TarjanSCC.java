@@ -1,11 +1,13 @@
 package graph.scc;
 
+import util.Metrics;
 import java.util.*;
 
 public class TarjanSCC {
-
     private final Map<String, List<String>> graph;
+    private final Metrics metrics = new Metrics("TarjanSCC");
     private int time = 0;
+
     private final Map<String, Integer> disc = new HashMap<>();
     private final Map<String, Integer> low = new HashMap<>();
     private final Deque<String> stack = new ArrayDeque<>();
@@ -17,15 +19,18 @@ public class TarjanSCC {
     }
 
     public List<List<String>> findSCCs() {
+        metrics.start();
         for (String v : graph.keySet()) {
-            if (!disc.containsKey(v)) {
-                dfs(v);
-            }
+            if (!disc.containsKey(v)) dfs(v);
         }
+        metrics.stop();
+        System.out.println("[Tarjan Metrics] " + metrics);
+        metrics.saveToCSV("metrics.csv");
         return components;
     }
 
     private void dfs(String u) {
+        metrics.incDFS();
         disc.put(u, time);
         low.put(u, time);
         time++;
@@ -33,6 +38,7 @@ public class TarjanSCC {
         onStack.add(u);
 
         for (String v : graph.getOrDefault(u, Collections.emptyList())) {
+            metrics.incEdge();
             if (!disc.containsKey(v)) {
                 dfs(v);
                 low.put(u, Math.min(low.get(u), low.get(v)));
@@ -41,7 +47,6 @@ public class TarjanSCC {
             }
         }
 
-        // root of SCC
         if (Objects.equals(low.get(u), disc.get(u))) {
             List<String> comp = new ArrayList<>();
             String w;
@@ -54,26 +59,38 @@ public class TarjanSCC {
         }
     }
 
-    public static Map<Integer, List<String>> toCondensationGraph(List<List<String>> sccList,
-                                                                 Map<String, List<String>> graph) {
-        // Map vertex -> componentId
+    public static Map<String, List<String>> toCondensationGraph(List<List<String>> sccList,
+                                                                Map<String, List<String>> graph) {
         Map<String, Integer> compIndex = new HashMap<>();
         for (int i = 0; i < sccList.size(); i++) {
-            for (String v : sccList.get(i)) compIndex.put(v, i);
+            for (String v : sccList.get(i)) {
+                compIndex.put(v, i);
+            }
         }
 
-        Map<Integer, List<String>> condensed = new HashMap<>();
-        for (int i = 0; i < sccList.size(); i++) condensed.put(i, new ArrayList<>());
+        Map<String, List<String>> condensed = new HashMap<>();
+        for (int i = 0; i < sccList.size(); i++) {
+            condensed.put("C" + i, new ArrayList<>());
+        }
 
         for (var entry : graph.entrySet()) {
             String u = entry.getKey();
             for (String v : entry.getValue()) {
                 int cu = compIndex.get(u);
                 int cv = compIndex.get(v);
-                if (cu != cv && !condensed.get(cu).contains("C" + cv))
-                    condensed.get(cu).add("C" + cv);
+                if (cu != cv) {
+                    String from = "C" + cu;
+                    String to = "C" + cv;
+                    if (!condensed.get(from).contains(to)) {
+                        condensed.get(from).add(to);
+                    }
+                }
             }
         }
         return condensed;
+    }
+
+    public Metrics getMetrics() {
+        return metrics;
     }
 }

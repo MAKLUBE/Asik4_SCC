@@ -1,10 +1,16 @@
 package graph.topo;
 
+import util.Metrics;
 import java.util.*;
 
 public class TopologicalSort {
 
+    private static Metrics metrics;
+
     public static List<String> kahnSort(Map<String, List<String>> graph) {
+        metrics = new Metrics("KahnTopo");
+        metrics.start();
+
         Map<String, Integer> indegree = new HashMap<>();
         for (String u : graph.keySet()) indegree.put(u, 0);
         for (List<String> adj : graph.values()) {
@@ -19,12 +25,21 @@ public class TopologicalSort {
         List<String> order = new ArrayList<>();
         while (!q.isEmpty()) {
             String u = q.poll();
+            metrics.incQueueOp();
             order.add(u);
             for (String v : graph.getOrDefault(u, Collections.emptyList())) {
                 indegree.put(v, indegree.get(v) - 1);
-                if (indegree.get(v) == 0) q.offer(v);
+                metrics.incEdge();
+                if (indegree.get(v) == 0) {
+                    q.offer(v);
+                    metrics.incQueueOp();
+                }
             }
         }
+
+        metrics.stop();
+        System.out.println("[Kahn Metrics] " + metrics);
+        metrics.saveToCSV("metrics.csv");
 
         if (order.size() != graph.size()) {
             throw new IllegalStateException("Graph contains a cycle — not a DAG!");
@@ -44,11 +59,14 @@ public class TopologicalSort {
 
     private static void dfs(String u, Map<String, List<String>> graph,
                             Set<String> visited, List<String> result) {
-
         visited.add(u);
         for (String v : graph.getOrDefault(u, Collections.emptyList())) {
             if (!visited.contains(v)) dfs(v, graph, visited, result);
         }
         result.add(u);
+    }
+
+    public static Metrics getMetrics() {
+        return metrics;
     }
 }
